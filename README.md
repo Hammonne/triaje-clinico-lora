@@ -6,12 +6,7 @@ clínica en Perú, el modelo produce un objeto **JSON** estructurado con la
 especialidad, prioridad, acción, grupo de edad, signos de alarma, síntomas y un
 resumen.
 
-Curso UTEC — docente Robert Buleje. El contexto completo del proyecto está en
-[`CLAUDE.md`](CLAUDE.md) y el enunciado en [`docs/enunciado.md`](docs/enunciado.md).
-
-> ⚠️ **Uso académico únicamente.** Este modelo **no** es una herramienta clínica
-> real y **no** debe usarse para tomar decisiones médicas. Es un ejercicio de
-> fine-tuning y diseño experimental.
+Curso UTEC — docente Robert Buleje.
 
 ## Esquema de salida
 
@@ -64,8 +59,6 @@ pip install -e ".[gpu]"
 ## Estructura
 
 ```
-docs/enunciado.md            Enunciado del hackatón
-referencia_profe/            Código de la clase (solo referencia, NO modificar)
 data/
   guia_etiquetado.md         Criterios de etiquetado + 2 ejemplos por clase
   plantilla_manual.csv       Plantilla para escribir ejemplos a mano
@@ -95,6 +88,9 @@ En construcción. Fases completadas:
   etiquetado, plantilla manual y validador de dataset.
 - **Fase 2:** prompts, carga/validación de datos, splits estratificados y
   generación de ejemplos sintéticos.
+- **Fase 3:** carga del modelo 4-bit + LoRA/DoRA, entrenamiento, evaluación con
+  todas las métricas y runner del diseño factorial con reanudación.
+- **Fase 4:** análisis (ANOVA, regresión, gráficos) y notebooks de orquestación.
 
 ## TO-DO del equipo (trabajo 100% humano)
 
