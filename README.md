@@ -1,0 +1,2 @@
+# triaje-clinico-lora
+okei
