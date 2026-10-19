@@ -127,6 +127,8 @@ class Config:
         """
         self.smoke_test = True
         self.model_name = self.model_name_smoke
+        # El modelo diminuto (GPT-2) nombra sus capas distinto que Phi-3.5.
+        self.lora_target_modules = ["c_attn"]
         self.use_4bit = False
         self.fp16 = False
         self.bf16 = False
