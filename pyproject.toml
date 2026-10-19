@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "triaje"
+version = "0.1.0"
+description = "Triaje clínico de mensajes de pacientes con LoRA/DoRA sobre Phi-3.5-mini (Hackatón 8, UTEC)"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Equipo Las Grills" }]
+
+# Las versiones exactas para Colab viven en requirements.txt. Aquí solo
+# declaramos límites mínimos para que `pip install -e .` funcione en local.
+dependencies = [
+    "transformers>=4.43",
+    "peft>=0.12",
+    "accelerate>=0.33",
+    "datasets>=2.20",
+    "numpy>=1.26,<2.0",
+    "pandas>=2.2",
+    "scikit-learn>=1.5",
+    "scipy>=1.13",
+    "statsmodels>=0.14",
+    "matplotlib>=3.9",
+    "tqdm>=4.66",
+]
+
+[project.optional-dependencies]
+# Dependencias que solo se necesitan en Colab con GPU (no en el smoke-test en CPU).
+gpu = ["bitsandbytes>=0.44", "sentencepiece>=0.2", "trl>=0.11"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,49 @@
+# --- Modelos, adaptadores y checkpoints (van a Drive, NUNCA a git) ---
+*.safetensors
+*.bin
+*.pt
+*.ckpt
+*.gguf
+checkpoints/
+adapters/
+adaptadores/
+*_adapter/
+*lora*adapter*/
+outputs/
+runs/
+
+# --- Cachés de Hugging Face / datasets / torch ---
+.cache/
+hf_cache/
+.huggingface/
+huggingface/
+transformers_cache/
+datasets_cache/
+
+# --- Experimentos / logs ---
+wandb/
+*.log
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+
+# --- Sistema operativo ---
+.DS_Store
+Thumbs.db
+
+# --- Resultados grandes (en results/ solo CSV/JSON pequeños y figuras) ---
+results/**/*.safetensors
+results/**/*.bin
+
+# NO ignoramos data/*.jsonl ni results/*.csv pequeños: son parte del trabajo.

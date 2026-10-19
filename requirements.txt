@@ -1,0 +1,29 @@
+# Versiones fijadas y compatibles con Google Colab (T4, CUDA 12.x) a octubre 2026.
+#
+# NOTA: NO copiamos el requirements.txt de referencia_profe/, cuyas versiones
+# (torch 2.14, transformers 5.19, numpy 2.5, ...) corresponden a un entorno
+# simulado y no instalan en el Colab real. Aquí fijamos un set probado.
+#
+# torch/torchvision NO se fijan: se usa el que ya trae Colab preinstalado con la
+# CUDA correcta. Si hiciera falta, Colab trae torch>=2.3.
+
+# --- Núcleo de fine-tuning con PEFT/LoRA/DoRA sobre Phi-3.5 ---
+transformers==4.44.2      # >=4.43 requerido para Phi-3.5-mini-instruct
+peft==0.13.2              # incluye use_dora=True (DoRA)
+accelerate==0.34.2
+bitsandbytes==0.44.1      # carga 4-bit NF4 (QLoRA)
+datasets==2.21.0
+trl==0.11.4               # opcional: SFTTrainer (puede no usarse)
+sentencepiece==0.2.0      # tokenizer de Phi-3.5
+safetensors==0.4.5
+
+# --- Análisis, métricas y gráficos ---
+numpy==1.26.4
+pandas==2.2.2
+scikit-learn==1.5.2       # macro-F1, métricas por campo
+scipy==1.13.1             # ANOVA / regresión
+statsmodels==0.14.2       # ANOVA de dos factores con réplicas
+matplotlib==3.9.2
+
+# --- Utilidades ---
+tqdm==4.66.5

@@ -1,0 +1,2 @@
+id,mensaje,especialidad,prioridad,accion,grupo_edad,signos_alarma,sintomas,resumen,origen,notas
+man_0001,"EJEMPLO (borrar esta fila): Siento un dolor fuerte en el pecho que baja al brazo y sudo frío",cardiologia,I,emergencia_inmediata,adulto,true,dolor de pecho;sudoracion,Paciente adulto con dolor torácico irradiado y sudoración que sugiere emergencia cardiológica,ejemplo_borrar,fila de muestra para ver el formato
