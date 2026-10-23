@@ -1,0 +1,13 @@
+# Instalación liviana para Google Colab.
+#
+# Colab ya trae torch, numpy, pandas, scipy, scikit-learn, statsmodels,
+# matplotlib, sentencepiece y tqdm compatibles con su versión de Python. Fijar
+# versiones viejas de esas librerías (como en requirements.txt) obliga a pip a
+# desinstalar/reinstalar o incluso compilar desde fuente, y el setup tarda >10 min.
+# Aquí solo instalamos lo que el fine-tuning necesita y Colab no trae.
+transformers==4.44.2      # >=4.43 requerido para Phi-3.5-mini-instruct
+peft==0.13.2              # incluye use_dora=True (DoRA)
+accelerate==0.34.2
+datasets==2.21.0
+trl==0.11.4
+bitsandbytes>=0.44.1      # sin techo: debe calzar con la CUDA del torch de Colab
