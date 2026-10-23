@@ -27,7 +27,9 @@ def cargar_modelo_y_tokenizer(config: Config, para_entrenar: bool = True):
     """
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
-    tokenizer = AutoTokenizer.from_pretrained(config.model_name, trust_remote_code=True)
+    # trust_remote_code=False: transformers trae Phi-3 nativo; el código remoto del
+    # Hub no es compatible con versiones recientes de transformers.
+    tokenizer = AutoTokenizer.from_pretrained(config.model_name, trust_remote_code=False)
     # Phi-3.5 trae pad token, pero por robustez lo fijamos si faltara.
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -47,14 +49,14 @@ def cargar_modelo_y_tokenizer(config: Config, para_entrenar: bool = True):
             config.model_name,
             quantization_config=bnb_config,
             device_map="auto",
-            trust_remote_code=True,
+            trust_remote_code=False,
             attn_implementation=config.attn_implementation,
         )
     else:
         # ── Ruta smoke-test / CPU: sin cuantización ──
         model = AutoModelForCausalLM.from_pretrained(
             config.model_name,
-            trust_remote_code=True,
+            trust_remote_code=False,
         )
 
     if para_entrenar and config.use_4bit and not config.smoke_test:
