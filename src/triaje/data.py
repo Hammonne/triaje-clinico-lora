@@ -9,7 +9,8 @@ Los datos viven en `data/` como JSONL. Cada fila::
 Este módulo:
 - carga y valida todas las filas contra `schema.py`,
 - arma splits train/val/test **estratificados por `prioridad`** con semilla fija,
-- prioriza los ejemplos `manual`/`real` para el **test** (CLAUDE.md §5),
+- estratifica también por `origen`, para que cada split mantenga la misma
+  proporción de ejemplos manuales/reales (~20%) que el dataset completo,
 - garantiza que el test **nunca** se use para entrenar ni elegir hiperparámetros.
 """
 
@@ -22,8 +23,9 @@ from typing import Dict, List
 
 from .schema import PRIORIDADES, validar_salida
 
-# Orígenes que priorizamos para el test (datos de mayor calidad / realismo).
-ORIGENES_PREFERIDOS_TEST = ("manual", "real")
+# Orígenes escritos por humanos: se reparten proporcionalmente entre los splits
+# para que el entrenamiento también aprenda de ellos (>=20% exigido).
+ORIGENES_HUMANOS = ("manual", "real")
 
 
 @dataclass
@@ -110,28 +112,26 @@ def dividir(
     seed: int,
 ) -> Splits:
     """
-    Divide en train/val/test **estratificando por `prioridad`** y priorizando los
-    ejemplos `manual`/`real` para el test.
+    Divide en train/val/test **estratificando por `prioridad` y por `origen`**
+    (humano = manual/real vs. sintético).
 
     Estrategia (determinística con `seed`):
 
-    1. Se agrupa por prioridad (estratos).
-    2. Dentro de cada estrato, los ejemplos preferidos (manual/real) se ponen
-       primero en la "cola" del test, hasta llenar la cuota de test del estrato;
-       el resto de test se completa con sintéticos.
-    3. El remanente se reparte entre train y val según las fracciones.
+    1. Se agrupa por (prioridad, humano/sintético).
+    2. Cada estrato se baraja y se corta según las fracciones.
 
-    Así el test queda estratificado por prioridad y cargado de datos de calidad,
-    sin que ningún ejemplo caiga en dos splits.
+    Así los tres splits conservan el balance de prioridades y el ~20% de
+    ejemplos escritos a mano, sin que ningún ejemplo caiga en dos splits.
+    Las métricas por origen se pueden separar después con el campo `origen`.
     """
     assert abs(frac_train + frac_val + frac_test - 1.0) < 1e-6, (
         "Las fracciones deben sumar 1.0"
     )
     rng = random.Random(seed)
 
-    por_prioridad: Dict[str, List[Ejemplo]] = defaultdict(list)
+    estratos: Dict[tuple, List[Ejemplo]] = defaultdict(list)
     for ej in ejemplos:
-        por_prioridad[ej.prioridad].append(ej)
+        estratos[(ej.prioridad, ej.origen in ORIGENES_HUMANOS)].append(ej)
 
     train: List[Ejemplo] = []
     val: List[Ejemplo] = []
@@ -139,32 +139,18 @@ def dividir(
 
     # Recorremos los estratos en orden fijo (PRIORIDADES) para reproducibilidad.
     for prioridad in PRIORIDADES:
-        grupo = por_prioridad.get(prioridad, [])
-        if not grupo:
-            continue
+        for humano in (True, False):
+            grupo = sorted(estratos.get((prioridad, humano), []), key=lambda e: e.id)
+            if not grupo:
+                continue
+            rng.shuffle(grupo)
 
-        preferidos = [e for e in grupo if e.origen in ORIGENES_PREFERIDOS_TEST]
-        resto = [e for e in grupo if e.origen not in ORIGENES_PREFERIDOS_TEST]
-        rng.shuffle(preferidos)
-        rng.shuffle(resto)
-
-        n = len(grupo)
-        n_test = max(1, round(n * frac_test)) if n > 0 else 0
-
-        # Test: primero los preferidos, luego sintéticos hasta la cuota.
-        cola_test = preferidos + resto
-        test_estrato = cola_test[:n_test]
-        remanente = cola_test[n_test:]
-
-        # Del remanente, separar val y train.
-        rng.shuffle(remanente)
-        n_val = round(n * frac_val)
-        val_estrato = remanente[:n_val]
-        train_estrato = remanente[n_val:]
-
-        train.extend(train_estrato)
-        val.extend(val_estrato)
-        test.extend(test_estrato)
+            n = len(grupo)
+            n_test = round(n * frac_test)
+            n_val = round(n * frac_val)
+            test.extend(grupo[:n_test])
+            val.extend(grupo[n_test : n_test + n_val])
+            train.extend(grupo[n_test + n_val :])
 
     rng.shuffle(train)
     rng.shuffle(val)
