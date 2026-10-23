@@ -81,7 +81,10 @@ class Config:
     # mantiene cada corrida en pocos minutos (presupuesto total ~1-2 h).
     max_steps: int = 100  # si > 0, manda sobre las épocas
     per_device_train_batch_size: int = 2
-    per_device_eval_batch_size: int = 16  # también es el lote de generación en test
+    # Lote de la loss de validación del Trainer. Pequeño a propósito: con el
+    # vocabulario de Qwen (~152k tokens) los logits de 16 × 512 tokens ocupan
+    # ~4.6 GB y no caben en la T4 junto al entrenamiento.
+    per_device_eval_batch_size: int = 2
     gradient_accumulation_steps: int = 8  # batch efectivo = 2 * 8 = 16
     learning_rate: float = 2e-4
     weight_decay: float = 0.01
@@ -96,6 +99,9 @@ class Config:
 
     # ── Generación / inferencia ─────────────────────────────────────────────
     max_new_tokens: int = 160
+    # Lote de generación en la evaluación del test (solo inferencia, sin logits
+    # de toda la secuencia): 16 prompts a la vez caben de sobra en la T4.
+    batch_generacion: int = 16
     temperature: float = 1.0
     top_p: float = 1.0
     do_sample: bool = False  # determinístico: para medir reproducible

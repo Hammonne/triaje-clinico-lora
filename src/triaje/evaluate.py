@@ -176,7 +176,7 @@ def evaluar(
         torch.cuda.reset_peak_memory_stats()
 
     model.eval()
-    lote = max(1, config.per_device_eval_batch_size)
+    lote = max(1, config.batch_generacion)
     t0 = time.perf_counter()
     respuestas: List[Tuple[str, int]] = []
     for i in range(0, n, lote):
