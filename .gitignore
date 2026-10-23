@@ -47,3 +47,7 @@ results/**/*.safetensors
 results/**/*.bin
 
 # NO ignoramos data/*.jsonl ni results/*.csv pequeños: son parte del trabajo.
+
+# Salidas del smoke-test (modelo diminuto): no son resultados del experimento.
+results_smoke/
+outputs_smoke/

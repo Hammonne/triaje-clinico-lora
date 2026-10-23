@@ -147,6 +147,11 @@ class Config:
         """
         self.smoke_test = True
         self.model_name = self.model_name_smoke
+        # Carpetas propias: si compartiera `results/` con la suite real, sus filas
+        # (mismos run_id: base_s42, lora_r4_a4_s42, ...) harían que el runner
+        # se saltara esas corridas reales creyendo que ya están hechas.
+        self.results_dir = self.results_dir.parent / f"{self.results_dir.name}_smoke"
+        self.output_dir = self.output_dir.parent / f"{self.output_dir.name}_smoke"
         # El modelo diminuto (GPT-2) nombra sus capas distinto que Qwen2.5.
         self.lora_target_modules = ["c_attn"]
         self.use_4bit = False
