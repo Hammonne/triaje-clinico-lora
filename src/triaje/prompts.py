@@ -2,14 +2,16 @@
 Prompts y formato de chat para el triaje.
 =========================================
 
-Un solo lugar define el *system prompt* y cómo se arma el diálogo para Phi-3.5.
+Un solo lugar define el *system prompt* y cómo se arma el diálogo con el modelo.
 El esquema que se inserta en el prompt viene de `schema.py` (fuente única), así
 el modelo nunca ve un esquema distinto del que valida el evaluador.
 
-Phi-3.5 usa el chat template ``<|system|> ... <|user|> ... <|assistant|>``. En el
-código real usamos ``tokenizer.apply_chat_template`` (ver `modelo.py`/`train.py`);
-aquí definimos los *mensajes* (lista de dicts role/content) y un formateo manual
-de respaldo para el smoke-test con modelos que no traen chat template.
+En el código real usamos ``tokenizer.apply_chat_template`` (ver `train.py` y
+`evaluate.py`), que aplica el formato propio de cada modelo (en Qwen2.5,
+``<|im_start|>system ... <|im_end|>``). Aquí definimos los *mensajes* (lista de
+dicts role/content) y un formateo manual de respaldo (estilo
+``<|system|> ... <|user|> ... <|assistant|>``) para el smoke-test con modelos que
+no traen chat template.
 """
 
 from typing import Dict, List, Optional
@@ -45,7 +47,7 @@ def construir_mensajes(mensaje_paciente: str) -> List[Dict[str, str]]:
 
 def formatear_manual(mensaje_paciente: str, respuesta: Optional[str] = None) -> str:
     """
-    Formateo manual del chat de Phi-3.5, de respaldo para cuando el tokenizer no
+    Formateo manual del chat (estilo Phi), de respaldo para cuando el tokenizer no
     tiene chat template (p. ej. el modelo diminuto del smoke-test).
 
     Si se pasa ``respuesta`` (el JSON esperado), se incluye como turno del

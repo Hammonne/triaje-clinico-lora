@@ -29,11 +29,23 @@ Los criterios de etiquetado con ejemplos están en
 
 ## Modelo y hardware
 
-- **Modelo base:** `microsoft/Phi-3.5-mini-instruct` (3.8B), cargado en **4-bit NF4**
-  (QLoRA) con bitsandbytes.
+- **Modelo base:** `Qwen/Qwen2.5-0.5B-Instruct` (0.5B, multilingüe), en **fp16** sin
+  cuantizar: cabe entero en la T4. Lo elegimos en lugar de Phi-3.5-mini (3.8B, 4-bit)
+  para que el diseño experimental completo corra en ~1-2 h de GPU.
 - **Hardware:** Google Colab **T4 (16 GB)**, la misma GPU para todos los experimentos.
-- Ajustes T4: `fp16`, `compute_dtype=float16` (no hay bf16), `attn_implementation="eager"`
-  (no hay flash-attention), `gradient_checkpointing`, `paged_adamw_8bit`.
+- Ajustes T4: `fp16` (no hay bf16), `attn_implementation="sdpa"` (no hay
+  flash-attention 2), `adamw_torch`.
+
+## Diseño experimental
+
+19 corridas (ver `src/triaje/experimentos.py`), con una semilla por ronda (42 y 123):
+
+- **Factorial LoRA:** r ∈ {4, 16, 64} × α/r ∈ {1, 2}, con 2 réplicas → ANOVA de dos
+  factores y regresión del desempeño vs r.
+- **Extremos** r ∈ {2, 128} (α/r = 2), con 2 réplicas → verificar fuera del dominio
+  el óptimo que predice la regresión.
+- **DoRA** (r = 16, α/r = 2), con 2 réplicas → comparación de tecnologías.
+- **Baseline** sin LoRA.
 
 ## Instalación
 
@@ -46,10 +58,10 @@ pip install -e .
 ### Colab (con GPU)
 
 ```bash
-git clone <URL-del-repo>
+git clone -b splits-con-manual https://github.com/Hammonne/triaje-clinico-lora.git
 cd triaje-clinico-lora
-pip install -r requirements.txt
-pip install -e ".[gpu]"
+pip install -r requirements.txt   # Colab ya trae todo; solo verifica versiones mínimas
+pip install -e .
 # Montar Google Drive para guardar adaptadores y resultados
 ```
 

@@ -66,40 +66,61 @@ class Metricas:
         return asdict(self)
 
 
-def generar_respuesta(mensaje: str, model, tokenizer, config: Config) -> Tuple[str, int]:
-    """
-    Genera la respuesta del modelo para un mensaje. Devuelve (texto, n_tokens_generados).
-    Usa el chat template si existe; si no, el formateo manual de Phi-3.5.
-    """
-    plantilla = getattr(tokenizer, "chat_template", None)
-    if plantilla:
+def _texto_entrada(mensaje: str, tokenizer) -> str:
+    """Prompt de inferencia: chat template si existe; si no, el formateo manual."""
+    if getattr(tokenizer, "chat_template", None):
         mensajes = [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": mensaje},
         ]
-        entrada = tokenizer.apply_chat_template(
+        return tokenizer.apply_chat_template(
             mensajes, tokenize=False, add_generation_prompt=True
         )
-    else:
-        entrada = formatear_manual(mensaje, respuesta=None)
+    return formatear_manual(mensaje, respuesta=None)
 
-    inputs = tokenizer(entrada, return_tensors="pt").to(model.device)
+
+def generar_respuestas(
+    mensajes: List[str], model, tokenizer, config: Config
+) -> List[Tuple[str, int]]:
+    """
+    Genera las respuestas de un LOTE de mensajes en una sola llamada a
+    ``generate`` (mucho más rápido en GPU que de uno en uno). Devuelve una lista
+    de (texto, n_tokens_generados), en el mismo orden.
+
+    Para generar en lote, el padding va a la IZQUIERDA (así todos los prompts
+    terminan en la misma posición y la generación continúa desde ahí). Con
+    decodificación greedy el resultado es el mismo que generando de a uno.
+    """
+    entradas = [_texto_entrada(m, tokenizer) for m in mensajes]
+
+    lado_original = tokenizer.padding_side
+    tokenizer.padding_side = "left"
+    try:
+        inputs = tokenizer(entradas, return_tensors="pt", padding=True).to(model.device)
+    finally:
+        tokenizer.padding_side = lado_original  # el entrenamiento usa "right"
 
     with torch.no_grad():
         salida = model.generate(
             **inputs,
             max_new_tokens=config.max_new_tokens,
-            temperature=config.temperature,
-            top_p=config.top_p,
             do_sample=config.do_sample,
+            # temperature/top_p solo aplican al muestrear; con greedy se omiten
+            # para que transformers no avise de parámetros sin efecto.
+            **({"temperature": config.temperature, "top_p": config.top_p}
+               if config.do_sample else {}),
             pad_token_id=tokenizer.pad_token_id,
         )
 
-    n_generados = salida.shape[1] - inputs.input_ids.shape[1]
-    texto = tokenizer.decode(
-        salida[0][inputs.input_ids.shape[1]:], skip_special_tokens=True
-    )
-    return texto.strip(), int(n_generados)
+    largo_prompt = inputs.input_ids.shape[1]
+    resultados = []
+    for fila in salida:
+        generados = fila[largo_prompt:]
+        # Tokens reales generados (sin el padding que se agrega tras terminar).
+        n_generados = int((generados != tokenizer.pad_token_id).sum())
+        texto = tokenizer.decode(generados, skip_special_tokens=True)
+        resultados.append((texto.strip(), n_generados))
+    return resultados
 
 
 def _f1_conjuntos(pred: List[str], real: List[str]) -> float:
@@ -154,9 +175,16 @@ def evaluar(
     if torch.cuda.is_available():
         torch.cuda.reset_peak_memory_stats()
 
+    model.eval()
+    lote = max(1, config.per_device_eval_batch_size)
     t0 = time.perf_counter()
-    for ej in test_ejs:
-        texto, n_tok = generar_respuesta(ej.mensaje, model, tokenizer, config)
+    respuestas: List[Tuple[str, int]] = []
+    for i in range(0, n, lote):
+        mensajes = [ej.mensaje for ej in test_ejs[i:i + lote]]
+        respuestas.extend(generar_respuestas(mensajes, model, tokenizer, config))
+    segundos = time.perf_counter() - t0
+
+    for ej, (texto, n_tok) in zip(test_ejs, respuestas):
         total_tokens += n_tok
 
         # Validez RAW (todo el texto debe ser JSON del esquema)
@@ -202,8 +230,6 @@ def evaluar(
             "prediccion_parseada": pred,
             "esquema_ok": bool(v_post),
         })
-
-    segundos = time.perf_counter() - t0
 
     # ── Consolidar métricas ──
     m.json_valido_raw = c_json_raw / n if n else 0.0

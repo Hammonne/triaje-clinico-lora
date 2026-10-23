@@ -9,12 +9,18 @@ números mágicos sueltos). Está basada en la ``Config`` del profe
 
 Diferencias deliberadas respecto a la demo del profe (ver `CLAUDE.md` §2):
 
-- Modelo ``microsoft/Phi-3.5-mini-instruct`` en vez de ``google/gemma-2b``
-  (el enunciado prohíbe usar el mismo modelo/familia que la clase).
-- La T4 **no** soporta bf16 → ``bnb_4bit_compute_dtype="float16"`` y ``fp16=True``
-  (el profe usaba bfloat16, que en T4 fallaría).
-- ``attn_implementation="eager"`` (no hay flash-attention en T4).
-- ``gradient_checkpointing=True`` y ``optim="paged_adamw_8bit"`` para caber en 16 GB.
+- Modelo ``Qwen/Qwen2.5-0.5B-Instruct`` en vez de ``google/gemma-2b`` (el
+  enunciado prohíbe usar el mismo modelo/familia que la clase). Es multilingüe
+  (buen español) y lo bastante pequeño para correr todo el diseño experimental
+  en ~1-2 h de una T4. Antes usábamos Phi-3.5-mini (3.8B), pero estimamos
+  ~1.5-2.5 h por corrida y el diseño completo no entraba en el presupuesto de Colab.
+- Con 0.5B parámetros el modelo cabe holgado en fp16 en la T4 (16 GB): no hace
+  falta cuantizar a 4-bit (QLoRA) ni ``gradient_checkpointing``, que solo
+  harían más lento el entrenamiento.
+- La T4 **no** soporta bf16 → ``fp16=True`` (el profe usaba bfloat16, que en T4
+  fallaría).
+- ``attn_implementation="sdpa"``: atención nativa de PyTorch (no hay
+  flash-attention 2 en T4, pero SDPA sí funciona y es más rápida que "eager").
 """
 
 import random
@@ -30,33 +36,38 @@ class Config:
     """Todos los parámetros del proyecto en un solo lugar."""
 
     # ── Modelo base ─────────────────────────────────────────────────────────
-    model_name: str = "microsoft/Phi-3.5-mini-instruct"
+    model_name: str = "Qwen/Qwen2.5-0.5B-Instruct"
     # Modelo diminuto para el smoke-test en CPU (ver `smoke_test`).
     model_name_smoke: str = "sshleifer/tiny-gpt2"
 
     # ── Cuantización 4-bit (QLoRA) ──────────────────────────────────────────
-    use_4bit: bool = True
+    # Desactivada: el modelo de 0.5B cabe en fp16. Si se activa, requiere
+    # instalar bitsandbytes (no viene preinstalado en Colab).
+    use_4bit: bool = False
     bnb_4bit_quant_type: str = "nf4"
     # float16 (NO bfloat16): la T4 no tiene soporte de bf16.
     bnb_4bit_compute_dtype: str = "float16"
     use_nested_quant: bool = True  # doble cuantización, ahorra VRAM
 
     # ── Atención / precisión en T4 ──────────────────────────────────────────
-    attn_implementation: str = "eager"  # no hay flash-attention en T4
+    attn_implementation: str = "sdpa"  # no hay flash-attention 2 en T4
     fp16: bool = True
     bf16: bool = False
-    gradient_checkpointing: bool = True
+    gradient_checkpointing: bool = False  # innecesario con 0.5B; solo ralentiza
 
     # ── LoRA / DoRA ─────────────────────────────────────────────────────────
     lora_r: int = 16
     lora_alpha: int = 32
     lora_dropout: float = 0.05
-    # Capas objetivo de Phi-3.5 (atención + MLP). Fijas entre todas las corridas.
+    # Capas objetivo de Qwen2.5 (atención + MLP). Fijas entre todas las corridas.
     lora_target_modules: List[str] = field(
         default_factory=lambda: [
-            "qkv_proj",
+            "q_proj",
+            "k_proj",
+            "v_proj",
             "o_proj",
-            "gate_up_proj",
+            "gate_proj",
+            "up_proj",
             "down_proj",
         ]
     )
@@ -65,15 +76,18 @@ class Config:
 
     # ── Entrenamiento (fijo entre corridas, salvo los factores del diseño) ──
     num_train_epochs: int = 3
-    max_steps: int = 300  # si > 0, manda sobre las épocas
+    # 100 pasos × batch efectivo 16 = 1600 ejemplos ≈ 1.5 épocas de train (1050).
+    # Suficiente para que un modelo pequeño aprenda el formato y las clases, y
+    # mantiene cada corrida en pocos minutos (presupuesto total ~1-2 h).
+    max_steps: int = 100  # si > 0, manda sobre las épocas
     per_device_train_batch_size: int = 2
-    per_device_eval_batch_size: int = 2
+    per_device_eval_batch_size: int = 16  # también es el lote de generación en test
     gradient_accumulation_steps: int = 8  # batch efectivo = 2 * 8 = 16
     learning_rate: float = 2e-4
     weight_decay: float = 0.01
     warmup_ratio: float = 0.03
     lr_scheduler_type: str = "cosine"
-    optim: str = "paged_adamw_8bit"
+    optim: str = "adamw_torch"  # paged_adamw_8bit requeriría bitsandbytes
     max_seq_length: int = 512  # mensajes + JSON de salida
     logging_steps: int = 10
     eval_steps: int = 50
@@ -127,7 +141,7 @@ class Config:
         """
         self.smoke_test = True
         self.model_name = self.model_name_smoke
-        # El modelo diminuto (GPT-2) nombra sus capas distinto que Phi-3.5.
+        # El modelo diminuto (GPT-2) nombra sus capas distinto que Qwen2.5.
         self.lora_target_modules = ["c_attn"]
         self.use_4bit = False
         self.fp16 = False

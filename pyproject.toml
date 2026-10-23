@@ -5,30 +5,30 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "triaje"
 version = "0.1.0"
-description = "Triaje clínico de mensajes de pacientes con LoRA/DoRA sobre Phi-3.5-mini (Hackatón 8, UTEC)"
+description = "Triaje clínico de mensajes de pacientes con LoRA/DoRA sobre Qwen2.5-0.5B-Instruct (Hackatón 8, UTEC)"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "Equipo Las Grills" }]
 
-# Las versiones exactas para Colab viven en requirements.txt. Aquí solo
-# declaramos límites mínimos para que `pip install -e .` funcione en local.
+# Mismos mínimos que requirements.txt (las versiones probadas en Colab). Aquí
+# solo se declaran para que `pip install -e .` funcione también en local.
 dependencies = [
-    "transformers>=4.43",
-    "peft>=0.12",
-    "accelerate>=0.33",
-    "datasets>=2.20",
-    "numpy>=1.26,<2.0",
-    "pandas>=2.2",
-    "scikit-learn>=1.5",
-    "scipy>=1.13",
-    "statsmodels>=0.14",
+    "transformers>=5.20",
+    "peft>=0.21",
+    "accelerate>=1.15",
+    "datasets>=4.8",
+    "numpy>=2.1",
+    "pandas>=2.2.3",
+    "scikit-learn>=1.6",
+    "scipy>=1.16",
+    "statsmodels>=0.15",
     "matplotlib>=3.9",
-    "tqdm>=4.66",
 ]
 
 [project.optional-dependencies]
-# Dependencias que solo se necesitan en Colab con GPU (no en el smoke-test en CPU).
-gpu = ["bitsandbytes>=0.44", "sentencepiece>=0.2", "trl>=0.11"]
+# Solo si se vuelve a cargar el modelo en 4-bit (Config.use_4bit=True); con
+# Qwen2.5-0.5B en fp16 no hace falta.
+qlora = ["bitsandbytes>=0.45"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

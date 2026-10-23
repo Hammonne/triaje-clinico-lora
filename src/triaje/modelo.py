@@ -3,11 +3,12 @@ Carga del modelo base (4-bit) y aplicación de LoRA / DoRA.
 ==========================================================
 
 Basado en `referencia_profe/main.ipynb` (`load_model_and_tokenizer`, `apply_lora`)
-pero adaptado a Phi-3.5-mini en T4 y a nuestra `Config`:
+pero adaptado a Qwen2.5-0.5B en T4 y a nuestra `Config`:
 
 - En smoke-test (CPU) NO se usa cuantización ni dtypes de GPU: se carga un modelo
   diminuto en fp32 para verificar el pipeline.
-- En GPU se carga en 4-bit NF4 con `compute_dtype=float16` (la T4 no tiene bf16).
+- En GPU se carga en fp16 (la T4 no tiene bf16). La ruta 4-bit NF4 (QLoRA) se
+  conserva por si se cambia a un modelo más grande (`config.use_4bit`).
 - La técnica a comparar (DoRA) se activa con `config.use_dora`.
 """
 
@@ -27,8 +28,10 @@ def cargar_modelo_y_tokenizer(config: Config, para_entrenar: bool = True):
     """
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
-    tokenizer = AutoTokenizer.from_pretrained(config.model_name, trust_remote_code=True)
-    # Phi-3.5 trae pad token, pero por robustez lo fijamos si faltara.
+    # Qwen2.5 está soportado nativamente por transformers: no hace falta
+    # `trust_remote_code` (ejecutar código remoto del Hub).
+    tokenizer = AutoTokenizer.from_pretrained(config.model_name)
+    # Qwen2.5 trae pad token, pero por robustez lo fijamos si faltara.
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = "right"  # correcto para causal LM en entrenamiento
@@ -47,15 +50,18 @@ def cargar_modelo_y_tokenizer(config: Config, para_entrenar: bool = True):
             config.model_name,
             quantization_config=bnb_config,
             device_map="auto",
-            trust_remote_code=True,
             attn_implementation=config.attn_implementation,
         )
-    else:
-        # ── Ruta smoke-test / CPU: sin cuantización ──
+    elif torch.cuda.is_available() and not config.smoke_test:
+        # ── Ruta GPU: fp16 sin cuantizar (el modelo cabe entero en la T4) ──
         model = AutoModelForCausalLM.from_pretrained(
             config.model_name,
-            trust_remote_code=True,
-        )
+            dtype=torch.float16 if config.fp16 else torch.float32,
+            attn_implementation=config.attn_implementation,
+        ).to("cuda")
+    else:
+        # ── Ruta smoke-test / CPU: sin cuantización, fp32 ──
+        model = AutoModelForCausalLM.from_pretrained(config.model_name)
 
     if para_entrenar and config.use_4bit and not config.smoke_test:
         from peft import prepare_model_for_kbit_training

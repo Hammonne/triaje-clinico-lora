@@ -7,10 +7,16 @@ guardando cada resultado apenas termina (robustez ante desconexiones de Colab).
 El runner **se salta las corridas cuyo `run_id` ya está en `resultados.csv`**, así
 se puede reanudar dándole play de nuevo.
 
-Diseño (CLAUDE.md §6):
-- Piloto con extremos: r ∈ {2, 128}.
-- Factorial final: r ∈ {4, 16, 64} × (alpha/r) ∈ {1, 2} = 6 configuraciones.
-- Réplicas: una semilla por réplica (42, 123).
+Diseño (ajustado a ~1-2 h de T4 y a la rúbrica del enunciado):
+- Factorial LoRA: r ∈ {4, 16, 64} × (alpha/r) ∈ {1, 2} = 6 configuraciones.
+- Extremos fuera del dominio del factorial: r ∈ {2, 128} con alpha/r = 2. Sirven
+  de piloto y para comprobar el óptimo que predice la regresión fuera del
+  rango experimentado (criterio de la rúbrica).
+- Réplicas: una semilla por ronda (42, luego 123). Se corre toda la ronda 1
+  antes de la ronda 2, como pide la rúbrica.
+- Comparación de tecnologías: DoRA en una sola configuración (r=16, alpha/r=2)
+  con las mismas 2 semillas, contra el LoRA equivalente.
+Total: 1 baseline + 2 × (6 + 2) LoRA + 2 DoRA = 19 corridas.
 Todo lo demás queda fijo entre corridas.
 """
 
@@ -37,26 +43,34 @@ def _grid_lora_dora(
     rs_factorial=(4, 16, 64),
     ratios=(1, 2),
     semillas=(42, 123),
+    dora_configs=((16, 2),),
     incluir_dora=True,
     incluir_piloto=True,
 ) -> List[Dict]:
     """
     Devuelve la lista de combinaciones (como dicts) del diseño. Cada dict trae
-    r, alpha, seed, use_dora. La semilla se asigna por réplica (ronda).
+    r, alpha, seed, use_dora.
+
+    Orden: primero todas las corridas LoRA de la ronda 1 (semilla 42), luego las
+    de la ronda 2 (semilla 123), y al final DoRA. Así, si se acaba el tiempo de
+    GPU, lo que quede hecho es lo más importante para el análisis.
+
+    `dora_configs` son pares (r, alpha/r) en los que se corre DoRA con todas las
+    semillas. Para replicar el diseño completo con DoRA, pasar las mismas
+    combinaciones del factorial.
     """
     combos: List[Dict] = []
-    tecnicas = [False, True] if incluir_dora else [False]
-
-    for use_dora in tecnicas:
+    for seed in semillas:
+        if incluir_piloto:
+            for r in rs_piloto:
+                combos.append({"r": r, "alpha": r * 2, "seed": seed, "use_dora": False})
+        for r in rs_factorial:
+            for ratio in ratios:
+                combos.append({"r": r, "alpha": r * ratio, "seed": seed, "use_dora": False})
+    if incluir_dora:
         for seed in semillas:
-            if incluir_piloto:
-                for r in rs_piloto:
-                    combos.append({"r": r, "alpha": r * 2, "seed": seed, "use_dora": use_dora})
-            for r in rs_factorial:
-                for ratio in ratios:
-                    combos.append(
-                        {"r": r, "alpha": r * ratio, "seed": seed, "use_dora": use_dora}
-                    )
+            for r, ratio in dora_configs:
+                combos.append({"r": r, "alpha": r * ratio, "seed": seed, "use_dora": True})
     return combos
 
 

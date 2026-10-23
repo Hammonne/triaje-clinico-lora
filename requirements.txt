@@ -1,29 +1,23 @@
-# Versiones fijadas y compatibles con Google Colab (T4, CUDA 12.x) a octubre 2026.
+# Requisitos para Google Colab (runtime 2026, Python 3.13, T4 con CUDA 13).
 #
-# NOTA: NO copiamos el requirements.txt de referencia_profe/, cuyas versiones
-# (torch 2.14, transformers 5.19, numpy 2.5, ...) corresponden a un entorno
-# simulado y no instalan en el Colab real. Aquí fijamos un set probado.
+# Colab YA trae instaladas todas estas librerías. Por eso aquí solo ponemos
+# versiones MÍNIMAS (las que probamos), no versiones exactas: con `>=`, pip no
+# reinstala nada si Colab ya cumple, y no intenta compilar desde código fuente
+# (los pines antiguos, p. ej. numpy==1.26.4 o pandas==2.2.2, no tienen wheels
+# para Python 3.13 y rompían la instalación).
 #
-# torch/torchvision NO se fijan: se usa el que ya trae Colab preinstalado con la
-# CUDA correcta. Si hiciera falta, Colab trae torch>=2.3.
+# torch NO se fija: se usa el que trae Colab con la CUDA correcta.
 
-# --- Núcleo de fine-tuning con PEFT/LoRA/DoRA sobre Phi-3.5 ---
-transformers==4.44.2      # >=4.43 requerido para Phi-3.5-mini-instruct
-peft==0.13.2              # incluye use_dora=True (DoRA)
-accelerate==0.34.2
-bitsandbytes==0.44.1      # carga 4-bit NF4 (QLoRA)
-datasets==2.21.0
-trl==0.11.4               # opcional: SFTTrainer (puede no usarse)
-sentencepiece==0.2.0      # tokenizer de Phi-3.5
-safetensors==0.4.5
+# --- Fine-tuning con PEFT (LoRA / DoRA) sobre Qwen2.5-0.5B-Instruct ---
+transformers>=5.20
+peft>=0.21              # incluye use_dora=True (DoRA)
+accelerate>=1.15
+datasets>=4.8
 
 # --- Análisis, métricas y gráficos ---
-numpy==1.26.4
-pandas==2.2.2
-scikit-learn==1.5.2       # macro-F1, métricas por campo
-scipy==1.13.1             # ANOVA / regresión
-statsmodels==0.14.2       # ANOVA de dos factores con réplicas
-matplotlib==3.9.2
-
-# --- Utilidades ---
-tqdm==4.66.5
+numpy>=2.1
+pandas>=2.2.3
+scikit-learn>=1.6       # macro-F1, métricas por campo
+scipy>=1.16             # ANOVA / regresión
+statsmodels>=0.15       # ANOVA de dos factores con réplicas
+matplotlib>=3.9

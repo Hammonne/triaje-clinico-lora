@@ -4,7 +4,7 @@ Entrenamiento del LoRA / DoRA.
 
 Arma el dataset tokenizado (prompt + JSON esperado), entrena con `Trainer` y mide
 el costo (tiempo de entrenamiento y VRAM pico). Sigue la estructura del `train`
-del profe, adaptado a `Config` y a Phi-3.5.
+del profe, adaptado a `Config` y a Qwen2.5.
 """
 
 import json
@@ -34,7 +34,7 @@ def _texto_entrenamiento(ejemplo: Ejemplo, tokenizer, config: Config) -> str:
     """
     Convierte un ejemplo en el texto completo de entrenamiento: system + user +
     assistant(JSON). Usa el chat template del tokenizer si existe; si no (modelo
-    diminuto del smoke-test), usa el formateo manual de Phi-3.5.
+    diminuto del smoke-test), usa el formateo manual de respaldo.
     """
     respuesta = json.dumps(ejemplo.salida, ensure_ascii=False)
     plantilla = getattr(tokenizer, "chat_template", None)
@@ -100,7 +100,9 @@ def entrenar(
         gradient_accumulation_steps=config.gradient_accumulation_steps,
         learning_rate=config.learning_rate,
         weight_decay=config.weight_decay,
-        warmup_ratio=config.warmup_ratio,
+        # transformers 5 eliminó `warmup_ratio`: un float en [0, 1) en `warmup_steps`
+        # se interpreta como proporción del total de pasos (mismo efecto).
+        warmup_steps=config.warmup_ratio,
         lr_scheduler_type=config.lr_scheduler_type,
         logging_steps=config.logging_steps,
         eval_strategy="steps" if (eval_ds and usar_max_steps) else "no",
