@@ -133,6 +133,12 @@ class Config:
     # costo de resolver el test set con una API vs. con nuestro LoRA.
     precio_api_usd_por_1m_tokens_in: float = 0.15
     precio_api_usd_por_1m_tokens_out: float = 0.60
+    # Supuesto: precio de un servicio de fine-tuning de pago por 1M tokens de
+    # entrenamiento, para comparar contra entrenar nuestro LoRA en una T4 propia.
+    precio_api_finetuning_usd_por_1m_tokens: float = 3.00
+    # Horas de un mes con la GPU encendida 24/7 (para el escenario de servir el
+    # modelo en una GPU dedicada en vez de pagar por token a una API).
+    horas_mes: float = 730.0
 
     # ── Modo smoke-test (pipeline completo en CPU, modelo diminuto) ─────────
     # Permite verificar que el código corre antes de gastar GPU en Colab.

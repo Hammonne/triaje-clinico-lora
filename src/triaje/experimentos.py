@@ -14,9 +14,9 @@ Diseño (ajustado a ~1-2 h de T4 y a la rúbrica del enunciado):
   rango experimentado (criterio de la rúbrica).
 - Réplicas: una semilla por ronda (42, luego 123). Se corre toda la ronda 1
   antes de la ronda 2, como pide la rúbrica.
-- Comparación de tecnologías: DoRA en una sola configuración (r=16, alpha/r=2)
-  con las mismas 2 semillas, contra el LoRA equivalente.
-Total: 1 baseline + 2 × (6 + 2) LoRA + 2 DoRA = 19 corridas.
+- Comparación de tecnologías: DoRA con alpha/r=2 en r ∈ {4, 16, 64} y las mismas
+  2 semillas, contra el LoRA equivalente (misma r, mismo alpha/r).
+Total: 1 baseline + 2 × (6 + 2) LoRA + 2 × 3 DoRA = 23 corridas.
 Todo lo demás queda fijo entre corridas.
 """
 
@@ -43,7 +43,7 @@ def _grid_lora_dora(
     rs_factorial=(4, 16, 64),
     ratios=(1, 2),
     semillas=(42, 123),
-    dora_configs=((16, 2),),
+    dora_configs=((4, 2), (16, 2), (64, 2)),
     incluir_dora=True,
     incluir_piloto=True,
 ) -> List[Dict]:
