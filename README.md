@@ -315,16 +315,48 @@ pip install -e .
 
 ### Colab (con GPU)
 
-```bash
-git clone -b splits-con-manual https://github.com/Hammonne/triaje-clinico-lora.git
-cd triaje-clinico-lora
-pip install -r requirements.txt   # Colab ya trae todo; solo verifica versiones mínimas
-pip install -e .
-# Montar Google Drive para guardar adaptadores y resultados
-```
+No hace falta instalar nada a mano: la primera celda de cada notebook detecta Colab y
+se encarga de todo (ver la sección siguiente).
 
 > Los adaptadores, checkpoints y `*.safetensors` **nunca** van a git: se guardan en
 > Google Drive (ver `.gitignore`).
+
+## Reproducir los experimentos en Colab
+
+Todo el trabajo vive en la rama **`splits-con-manual`**: datos, splits con los 300
+ejemplos manuales, código adaptado a Qwen2.5 y resultados.
+
+1. **Abrir el notebook 03 en Colab.** Hay dos formas:
+   - En Colab: *Archivo → Abrir notebook → GitHub*, buscar
+     `Hammonne/triaje-clinico-lora`, elegir la rama `splits-con-manual` y abrir
+     `notebooks/03_experimentos_colab.ipynb`.
+   - O descargar ese `.ipynb` del repositorio y subirlo con *Archivo → Subir notebook*.
+
+   Basta con abrir ese notebook: el resto del repositorio lo clona la primera celda.
+2. **Elegir la GPU T4:** *Entorno de ejecución → Cambiar tipo de entorno → T4*.
+   Todas las corridas deben usar la misma GPU para ser comparables.
+3. **Ejecutar las celdas en orden.**
+   - **Setup:** clona la rama `splits-con-manual` en `/content/triaje-clinico-lora`,
+     desinstala `torchao` (la versión que trae Colab es incompatible con `peft` 0.21),
+     instala el paquete y monta Google Drive. Drive pide autorización.
+   - **Configuración:** apunta resultados y adaptadores a `MyDrive/triaje/`.
+   - **Verificar GPU** y, opcionalmente, el **smoke-test**: un modelo diminuto que corre
+     en ~2 min y guarda en `results_smoke/`, sin tocar los resultados reales.
+   - **Suite completa:** las 23 corridas, ~3 h en total (~6,5 min por LoRA, ~13,5 min por
+     DoRA). Cada corrida agrega su fila a `MyDrive/triaje/results/resultados.csv` apenas
+     termina.
+4. **Si Colab se desconecta:** volver a ejecutar todas las celdas. La suite lee el
+   `resultados.csv` de Drive y salta las corridas que ya terminaron.
+5. **Analizar:** abrir `notebooks/04_analisis.ipynb` de la misma forma. No necesita GPU.
+   Por defecto lee los resultados versionados en `results/`. Para analizar una corrida
+   nueva, se puede copiar el `resultados.csv` y los `pred_*.jsonl` de Drive a `results/`,
+   o apuntar `config.results_dir` a la carpeta de Drive (está indicado en la celda de
+   configuración). También corre localmente desde la raíz del repo:
+   `pip install -e .` y abrir el notebook.
+
+Los notebooks 01 (generar datos y splits) y 02 (solo la línea base) no hacen falta para
+reproducir los resultados: los splits ya están versionados y la suite del 03 incluye la
+línea base. Si se ejecuta el 01, regenera los datos sintéticos y los splits.
 
 ## Estructura
 
